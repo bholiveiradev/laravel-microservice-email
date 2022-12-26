@@ -1,0 +1,58 @@
+version: '3.7'
+services:
+    # imagem micro email
+    app:
+        build:
+            args:
+                user: ${DOCKER_USER}
+                uid: ${DOCKER_UID}
+            context: ./
+            dockerfile: Dockerfile
+        restart: unless-stopped
+        volumes:
+            - ./:/var/www
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        depends_on:
+            - redis
+            - queue
+        networks:
+            - microservices_email
+
+    # imagem nginx
+    nginx:
+        image: nginx:alpine
+        restart: unless-stopped
+        ports:
+            - 8002:80
+            #- 443:443
+        volumes:
+            - ./:/var/www
+            - ./docker/nginx/:/etc/nginx/conf.d/
+        networks:
+            - microservices_email
+
+    # queue micro 01
+    queue:
+        build:
+            args:
+                user: ${DOCKER_USER}
+                uid: ${DOCKER_UID}
+            context: ./
+            dockerfile: Dockerfile
+        restart: unless-stopped
+        command: "php artisan queue:work"
+        volumes:
+            - ./:/var/www
+        networks:
+            - microservices_email
+
+    # redis
+    redis:
+        image: redis:latest
+        networks:
+            - microservices_email
+
+networks:
+    microservices_email:
+        driver: bridge
